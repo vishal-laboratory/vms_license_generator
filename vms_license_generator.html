@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VMS License Request Automation Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+        }
+        .btn-primary {
+            background-color: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #059669;
+        }
+        .btn-secondary {
+            background-color: #4b5563;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-secondary:hover {
+            background-color: #374151;
+        }
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+        .status-badge-success {
+            background-color: #d1fae5;
+            color: #059669;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+        }
+        .status-badge-error {
+            background-color: #fee2e2;
+            color: #ef4444;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+        }
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            max-width: 90%;
+            width: 450px;
+            position: relative;
+        }
+        .key-field {
+            padding: 10px;
+            border-radius: 6px;
+            background-color: #f3f4f6;
+            margin-bottom: 8px;
+        }
+        .message-item {
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            transition: all 0.1s;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .message-item:hover {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="mb-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded-md">
+        <h3 class="font-bold text-lg">Local Server Setup Guide:</h3>
+        <p class="text-sm">To use this tool: <strong>1. Ensure the Node.js server is running in your terminal.</strong> 2. **Open this HTML file directly in your browser.** (The server is an API, not the host for the UI).</p>
+    </div>
+
+    <header class="mb-8">
+        <h1 class="text-4xl font-extrabold text-gray-800">VMS License Request Automation Tool</h1>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-1 flex flex-col space-y-8">
+            <div class="card flex flex-col space-y-4">
+                <h2 class="text-xl font-bold text-gray-700">1. Raw Message Input & Queue</h2>
+                <div id="wa-status-display" class="mb-4"></div>
+                <button id="check-status-btn" class="btn-secondary w-full">Check WhatsApp Login Status</button>
+                <p class="text-sm text-gray-500">
+                    Paste the message below. The tool will use AI to extract the details.
+                </p>
+                <textarea id="raw-message-input" rows="8" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="Paste WhatsApp message here, or select from queue..."></textarea>
+                <button id="process-message-btn" class="btn-primary w-full mt-4">Process Current Message</button>
+            </div>
+
+            <div class="card flex flex-col space-y-4 flex-grow">
+                <h3 class="text-lg font-bold text-gray-700">WhatsApp Queue (<span id="queue-count">0</span>)</h3>
+                <button id="load-queue-btn" class="btn-secondary w-full">Load Messages from WhatsApp</button>
+                <div id="whatsapp-queue-list" class="flex-grow overflow-y-auto max-h-[300px] border border-gray-200 p-2 rounded-lg">
+                    <p id="queue-empty-message" class="text-sm text-gray-400 text-center py-4">Queue is empty. Click 'Load Messages...'</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2 space-y-8">
+            <div class="card">
+                <h2 class="text-xl font-bold text-gray-700">2. Extracted Information & License Check</h2>
+                <p class="text-sm text-gray-500 mb-4">
+                    Click 'Process' in Step 1 to extract data and automatically check license status. The camera count is calculated as: **(Installed Cameras + NVRs)**.
+                </p>
+                <div id="license-check-status" class="p-3 mb-4 rounded-lg hidden"></div>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Police Station:</label>
+                        <div id="ps-name" class="key-field font-semibold text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">District (DHQ):</label>
+                        <div id="dhq-name" class="key-field font-semibold text-gray-900">-</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Installed Cameras:</label>
+                        <div id="installed-cams" class="key-field font-semibold text-gray-900">0</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Total NVRs:</label>
+                        <div id="total-nvrs" class="key-field font-semibold text-gray-900">0</div>
+                    </div>
+                </div>
+                <div class="mb-6 p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded-md">
+                    <label class="block text-sm font-bold text-emerald-800">Requested License Count (NVRs + Cams):</label>
+                    <div id="requested-cams" class="text-2xl font-extrabold text-emerald-600">0</div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Machine Key:</label>
+                    <textarea id="machine-key-display" rows="3" class="key-field font-mono text-xs w-full resize-none border-none bg-gray-100 text-gray-900" readonly>-</textarea>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="text-xl font-bold text-gray-700">3. Email Generation</h2>
+                <p class="text-sm text-gray-500 mb-4">
+                    The final email request is ready below.
+                </p>
+                <textarea id="email-output" rows="12" class="w-full p-3 border border-gray-300 rounded-lg font-mono text-sm focus:ring-emerald-500 focus:border-emerald-500" placeholder="Generated email will appear here..."></textarea>
+                <button id="copy-email-btn" class="btn-primary w-full mt-4">Copy Email to Clipboard</button>
+            </div>
+        </div>
+    </main>
+
+    <div id="generic-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4">Modal Title</h3>
+            <div id="modal-body" class="text-gray-600 mb-6">Modal Body Content</div>
+            <div id="qr-section" class="flex flex-col items-center hidden">
+                <p class="text-sm text-center mb-4">Your local server needs to link with WhatsApp. Scan the QR code below using **"WhatsApp > Linked Devices"**.</p>
+                <div id="qrcode-canvas" class="p-2 border border-gray-300 rounded-lg"></div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-cancel-btn" class="btn-danger">Cancel</button>
+                <button id="modal-ok-btn" class="btn-primary hidden">OK</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+(function() {
+    const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXRcofg7aUvFQXQR4cbbL_RvK2cMniF0808yzsRMoJbo7ma8-h0g_w5pg_KcfWz2gqZw/exec';
+    const BAILEY_SERVER_API_URL = 'http://localhost:8001'; 
+    
+    const GEMINI_API_KEY = "AIzaSyChJsKYJjEJ2uBiKbayTdBtzZg7_vWniYE"; 
+    
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_API_KEY}`;
+
+    let appState = {
+        messageQueue: [],
+        extractedData: {},
+        isLoggedIn: false,
+    };
+
+    const D = {
+        rawInput: document.getElementById('raw-message-input'),
+        processBtn: document.getElementById('process-message-btn'),
+        loadQueueBtn: document.getElementById('load-queue-btn'),
+        queueList: document.getElementById('whatsapp-queue-list'),
+        queueCount: document.getElementById('queue-count'),
+        queueEmptyMsg: document.getElementById('queue-empty-message'),
+        waStatus: document.getElementById('wa-status-display'),
+        checkStatusBtn: document.getElementById('check-status-btn'),
+        psName: document.getElementById('ps-name'),
+        dhqName: document.getElementById('dhq-name'),
+        installedCams: document.getElementById('installed-cams'),
+        totalNVRs: document.getElementById('total-nvrs'),
+        requestedCams: document.getElementById('requested-cams'),
+        machineKeyDisplay: document.getElementById('machine-key-display'),
+        emailOutput: document.getElementById('email-output'),
+        licenseStatus: document.getElementById('license-check-status'),
+        copyEmailBtn: document.getElementById('copy-email-btn'),
+        modal: document.getElementById('generic-modal'),
+        modalTitle: document.getElementById('modal-title'),
+        modalBody: document.getElementById('modal-body'),
+        modalCancelBtn: document.getElementById('modal-cancel-btn'),
+        modalOKBtn: document.getElementById('modal-ok-btn'),
+        qrSection: document.getElementById('qr-section'),
+        qrCanvas: document.getElementById('qrcode-canvas'),
+    };
+
+    const showModal = (title, bodyHtml, showCancel = true, showOk = false, qrString = null) => {
+        D.modalTitle.textContent = title;
+        D.modalBody.innerHTML = bodyHtml;
+        D.modalCancelBtn.classList.toggle('hidden', !showCancel);
+        D.modalOKBtn.classList.toggle('hidden', !showOk);
+        D.modal.classList.remove('hidden');
+
+        if (qrString) {
+            D.qrSection.classList.remove('hidden');
+            D.qrCanvas.innerHTML = '';
+            try {
+                if (typeof qrcode !== 'undefined') {
+                    const qr = qrcode(0, 'L');
+                    qr.addData(qrString);
+                    qr.make();
+                    D.qrCanvas.innerHTML = qr.createImgTag(4, 8); 
+                } else {
+                    D.modalBody.innerHTML = `<p class="text-red-600 font-semibold mb-2">QR Code Library Failed to Load.</p><p>Raw string for manual scan:</p><textarea readonly class="w-full h-20 p-2 text-xs font-mono border rounded-lg">${qrString}</textarea>`;
+                }
+            } catch (e) {
+                console.error("Error generating QR code:", e);
+                D.modalBody.innerHTML = `Error generating QR code. Raw string:<br><small>${qrString}</small>`;
+            }
+        } else {
+            D.qrSection.classList.add('hidden');
+        }
+    };
+
+    const hideModal = () => D.modal.classList.add('hidden');
+
+    const showLicenseStatus = (message, isError, isWarning = false) => {
+        D.licenseStatus.textContent = message;
+        D.licenseStatus.className = 'p-3 mb-4 rounded-lg';
+        if (isError) {
+            D.licenseStatus.classList.add('bg-red-50', 'border-red-500', 'text-red-800');
+        } else if (isWarning) {
+            D.licenseStatus.classList.add('bg-yellow-50', 'border-yellow-500', 'text-yellow-800');
+        } else {
+            D.licenseStatus.classList.add('bg-emerald-50', 'border-emerald-500', 'text-emerald-800');
+        }
+    };
+
+    const fetchWithRetry = async (url, options, retries = 3) => {
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response;
+            } catch (error) {
+                if (i === retries - 1) throw error;
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+            }
+        }
+    };
+
+    const updateWhatsAppStatusUI = () => {
+        D.waStatus.innerHTML = appState.isLoggedIn
+            ? `<span class="status-badge-success"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-1"><path fill-rule="evenodd" d="M16.704 4.316a.75.75 0 0 1 .158.857l-1.4 1.4a.75.75 0 0 1-1.06 0L9.47 5.758a.75.75 0 0 1 0-1.06l1.4-1.4a.75.75 0 0 1 .857-.158l4.47 2.98Z" clip-rule="evenodd" /><path fill-rule="evenodd" d="M12.915 9.072a.75.75 0 0 1-.005 1.061l-5.657 5.657a.75.75 0 0 1-1.06 0l-2.828-2.829a.75.75 0 0 1 0-1.06L6.828 8.01a.75.75 0 0 1 1.06 0l5.027 5.028 3.535-3.535a.75.75 0 0 1 1.06 0l.707.707a.75.75 0 0 1 0 1.06L8.88 18.067a.75.75 0 0 1-1.06 0l-5.657-5.657a.75.75 0 0 1 0-1.06l2.829-2.828a.75.75 0 0 1 1.06 0l5.027 5.027 3.536-3.536a.75.75 0 0 1 1.06 0z" clip-rule="evenodd" /></svg> WhatsApp Connected. Queue is Active.</span>`
+            : `<span class="status-badge-error"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-1"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94l-1.72-1.72Z" clip-rule="evenodd" /></svg> WhatsApp Disconnected. Login Required.</span>`;
+    };
+
+    const checkWhatsAppStatus = async () => {
+        showModal('WhatsApp Login Status', 'Waiting for server response...', true, false);
+        try {
+            const response = await fetchWithRetry(`${BAILEY_SERVER_API_URL}/qr-status`);
+            const result = await response.json();
+            if (result.status === 'open') {
+                appState.isLoggedIn = true;
+                showModal('WhatsApp Connected', 'Your local server is logged in.', false, true);
+            } else if (result.status === 'qr_needed' && result.qr) {
+                appState.isLoggedIn = false;
+                showModal('WhatsApp Login Required', 'Scan the QR code below to link your device.', true, false, result.qr);
+            } else {
+                appState.isLoggedIn = false;
+                showModal('Server Response', `Server status is "${result.status}". Check terminal for details.`, true, false);
+            }
+        } catch (error) {
+            appState.isLoggedIn = false;
+            console.error('[WHATSAPP API ERROR]', error);
+            showModal('Server Offline', `Cannot reach server. Ensure it's running.`, true, false);
+        } finally {
+            updateWhatsAppStatusUI();
+            D.modalOKBtn.onclick = hideModal;
+            D.modalCancelBtn.onclick = hideModal;
+        }
+    };
+
+    const loadMessageQueue = async () => {
+        D.loadQueueBtn.textContent = 'Loading...';
+        D.loadQueueBtn.disabled = true;
+        try {
+            const response = await fetchWithRetry(`${BAILEY_SERVER_API_URL}/get-queue`);
+            const result = await response.json();
+            appState.messageQueue = result.queue || [];
+            renderQueue();
+        } catch (error) {
+            console.error('[QUEUE API ERROR]', error);
+            showModal('Queue API Failed', 'Could not connect to the queue endpoint.', true, false);
+        } finally {
+            D.loadQueueBtn.textContent = 'Load Messages from WhatsApp';
+            D.loadQueueBtn.disabled = false;
+        }
+    };
+
+    const discardMessage = async (index) => {
+        try {
+            const response = await fetchWithRetry(`${BAILEY_SERVER_API_URL}/discard-message/${index}`, { method: 'POST' });
+            if ((await response.json()).status === 'success') {
+                appState.messageQueue.splice(index, 1);
+                renderQueue();
+            } else {
+                showModal('Discard Failed', 'The server failed to discard the message.', true, false);
+            }
+        } catch (error) {
+            console.error('[DISCARD API ERROR]', error);
+            showModal('API Error', 'Could not discard message.', true, false);
+        }
+    };
+
+    const renderQueue = () => {
+        D.queueList.innerHTML = '';
+        D.queueCount.textContent = appState.messageQueue.length;
+        D.queueEmptyMsg.classList.toggle('hidden', appState.messageQueue.length > 0);
+        appState.messageQueue.forEach((msg, index) => {
+            const snippet = (msg.split('\n')[0] || '').substring(0, 50) + '...';
+            const item = document.createElement('div');
+            item.className = 'message-item group relative';
+            item.innerHTML = `<p class="text-xs text-gray-700 font-mono">${snippet}</p><div class="absolute right-0 top-0 h-full flex items-center pr-2 opacity-0 group-hover:opacity-100 transition-opacity"><button data-index="${index}" class="discard-btn text-red-500 hover:text-red-700 text-sm font-semibold ml-2">Discard</button></div>`;
+            item.onclick = () => { D.rawInput.value = msg; D.rawInput.focus(); };
+            D.queueList.appendChild(item);
+        });
+        document.querySelectorAll('.discard-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const index = parseInt(e.target.dataset.index);
+                showModal('Confirm Discard', `Discard message starting with: "${appState.messageQueue[index].substring(0, 30)}..."?`, true, true);
+                D.modalOKBtn.onclick = () => { hideModal(); discardMessage(index); };
+                D.modalCancelBtn.onclick = hideModal;
+            };
+        });
+    };
+
+    const parseMessageWithLLM = async (rawText) => {
+        if (GEMINI_API_KEY === "" || !GEMINI_API_KEY) {
+            showLicenseStatus('Error: Gemini API Key is missing.', true);
+            showModal('API Key Required', 'Please add your Gemini API Key to the `vms_license_generator.html` file to enable AI parsing.', true, false);
+            return null;
+        }
+
+        showLicenseStatus('Extracting details with Gemini...', false, true);
+        const schema = {
+            type: "OBJECT",
+            properties: {
+                "policeStation": { "type": "STRING" }, "dhqName": { "type": "STRING" },
+                "cameraCount": { "type": "INTEGER" }, "nvrCount": { "type": "INTEGER" },
+                "machineKey": { "type": "STRING" }
+            },
+            required: ["policeStation", "dhqName", "cameraCount", "nvrCount", "machineKey"]
+        };
+        const payload = {
+            contents: [{ parts: [{ text: `Extract the following details from the text below:\n\n${rawText}` }] }],
+            generationConfig: { responseMimeType: "application/json", responseSchema: schema }
+        };
+        try {
+            const response = await fetch(GEMINI_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+                const errorBody = await response.json();
+                console.error("Gemini API Error Response:", errorBody);
+                const errorMessage = errorBody?.error?.message || `HTTP error! status: ${response.status}`;
+                throw new Error(errorMessage);
+            }
+
+            const result = await response.json();
+            const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!jsonText) throw new Error("No content from Gemini. The response might be blocked.");
+            
+            const parsedJson = JSON.parse(jsonText);
+            return {
+                psName: parsedJson.policeStation || 'N/A',
+                dhqName: parsedJson.dhqName || 'N/A',
+                installedCams: parseInt(parsedJson.cameraCount) || 0,
+                totalNVRs: parseInt(parsedJson.nvrCount) || 0,
+                requestedCams: (parseInt(parsedJson.cameraCount) || 0) + (parseInt(parsedJson.nvrCount) || 0),
+                machineKey: parsedJson.machineKey || '-',
+            };
+        } catch (error) {
+            console.error('LLM Parsing Error:', error);
+            showLicenseStatus(`Error: Gemini parsing failed. ${error.message}`, true);
+            showModal('AI Parsing Failed', `The Gemini API returned an error. This is often because billing is not enabled for your Google Cloud project.<br><br><b>Details:</b> <pre class="bg-gray-100 p-2 rounded text-xs">${error.message}</pre>`, true, false);
+            return null;
+        }
+    };
+
+    const updateExtractedUI = (data) => {
+        D.psName.textContent = data.psName || 'N/A';
+        D.dhqName.textContent = data.dhqName || 'N/A';
+        D.installedCams.textContent = data.installedCams || 0;
+        D.totalNVRs.textContent = data.totalNVRs || 0;
+        D.requestedCams.textContent = data.requestedCams || 0;
+        D.machineKeyDisplay.value = data.machineKey || '-';
+    };
+
+    const generateEmail = (data) => {
+        D.emailOutput.value = `Vishal Chaudhary <vishal.chaudhary@i2vsys.com>
+To: Deepak, Amit, Rohit
+Subject: VMS License Request - ${data.psName} (${data.dhqName})
+
+Dear Sir,
+
+Kindly share VMS License
+No of Days: 30
+No of Camera: ${data.requestedCams}
+SI: Synergy
+District: ${data.dhqName}
+Police Station: ${data.psName}
+
+${data.machineKey}`;
+    };
+
+    const checkLicenseStatus = async (key) => {
+        D.processBtn.disabled = true;
+        generateEmail(appState.extractedData);
+
+        const searchSheet = async (sheetName, sheetDisplayName) => {
+            showLicenseStatus(`Checking ${sheetDisplayName}...`, false, true);
+            const url = new URL(GOOGLE_APPS_SCRIPT_URL);
+            url.searchParams.append('key', key);
+            if (sheetName) {
+                url.searchParams.append('sheetName', sheetName);
+            }
+            const response = await fetchWithRetry(url.toString(), { method: 'GET', credentials: 'omit' });
+            return await response.json();
+        };
+
+        try {
+            let result = await searchSheet('Police station License Sheet', 'Police Station Sheet');
+
+            if (result.status === 'NOT_FOUND') {
+                result = await searchSheet('DHQ (CMS License sheet)', 'DHQ (CMS) Sheet');
+            }
+
+            if (result.status === 'FOUND') {
+                if (!result.data || !result.data['Police Station Name']) {
+                    showLicenseStatus('ERROR: License found, but sheet data is incomplete.', true);
+                    return;
+                }
+                showModal('Duplicate License Found!', `<p class="font-bold text-red-700 mb-2">License already exists for this Machine Key!</p><p>Row: <span class="font-mono">${result.data.RowNumber}</span></p><p>Location: ${result.data['Police Station Name']} (${result.data['District Police Head Quater(DPHQ)']})</p><p>Status: <span class="font-bold text-emerald-600">${result.data['License Status']}</span></p>`, true, true);
+                showLicenseStatus('LICENSE EXISTS. See modal for details.', true);
+                D.emailOutput.value = 'LICENSE ALREADY EXISTS. EMAIL GENERATION BLOCKED.';
+            } else {
+                showLicenseStatus('License not found in any sheet. Ready to send email.', false);
+            }
+        } catch (error) {
+            console.error('[LICENSE CHECK ERROR]', error);
+            showLicenseStatus('API Error: Failed to check Google Sheet.', true);
+        } finally {
+            D.processBtn.disabled = false;
+        }
+    };
+
+    const startParsing = async () => {
+        const rawText = D.rawInput.value.trim();
+        if (!rawText) {
+            showModal('Input Required', 'Please paste a WhatsApp message.', true, false);
+            return;
+        }
+        updateExtractedUI({});
+        D.emailOutput.value = '';
+        
+        const extractedData = await parseMessageWithLLM(rawText);
+
+        if (extractedData) {
+            appState.extractedData = extractedData;
+            updateExtractedUI(appState.extractedData);
+            if (appState.extractedData.machineKey && appState.extractedData.machineKey !== '-') {
+                checkLicenseStatus(appState.extractedData.machineKey);
+            } else {
+                 showModal('Data Error', 'Machine Key missing after AI parsing.', true, false);
+                 showLicenseStatus('ERROR: Machine Key missing.', true);
+            }
+        } else {
+            // Modal with details is already shown inside parseMessageWithLLM
+        }
+    };
+
+    window.onload = () => {
+        checkWhatsAppStatus();
+        loadMessageQueue();
+        D.modalCancelBtn.onclick = hideModal;
+        D.processBtn.onclick = startParsing;
+        D.checkStatusBtn.onclick = checkWhatsAppStatus;
+        D.loadQueueBtn.onclick = loadMessageQueue;
+        D.copyEmailBtn.onclick = () => {
+            D.emailOutput.select();
+            try {
+                document.execCommand('copy');
+                showModal('Copy Status', 'Email copied successfully!', false, true);
+            } catch (err) {
+                showModal('Copy Status', 'Copying failed.', false, true);
+            }
+            D.modalOKBtn.onclick = hideModal;
+        };
+    };
+})();
+</script>
+</html>
+

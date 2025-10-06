@@ -1,0 +1,33 @@
+<<<<<<< HEAD
+{
+  "name": "baileys-license-automation",
+  "version": "1.0.0",
+  "description": "Local API bridge for Baileys to web app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc.5",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "pino": "^10.0.0"
+  }
+}
+=======
+{
+  "name": "baileys-license-automation",
+  "version": "1.0.0",
+  "description": "Local API bridge for Baileys to web app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc.5",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "pino": "^10.0.0"
+  }
+}
+>>>>>>> a35a8f3 (Updated index.html and script fixes for QR and WhatsApp login handling)
